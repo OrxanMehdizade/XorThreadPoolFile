@@ -37,18 +37,21 @@ namespace XorThreadPoolFile
 
                 cts = new CancellationTokenSource();
 
-                if (isEncrypting)
+                await Task.Run(() =>
                 {
-                    await Task.Run(() => EncryptFile(filePath)); // Şifreleme işlemini arka plan iş parçacığına taşı
-                }
-                else
-                {
-                    await Task.Run(() => DecryptFile(filePath)); // Şifre çözme işlemini arka plan iş parçacığına taşı
-                }
+                    if (isEncrypting)
+                    {
+                        ThreadPool.QueueUserWorkItem(state => EncryptFile(filePath));
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(state => DecryptFile(filePath));
+                    }
+                });
             }
             else
             {
-                MessageBox.Show("Lütfen bir dosya seçin.");
+                MessageBox.Show("Bir File seçin.");
             }
         }
 
@@ -60,8 +63,9 @@ namespace XorThreadPoolFile
             }
         }
 
-        private async Task EncryptFile(string filePath)
+        private void EncryptFile(object state)
         {
+            string filePath = (string)state;
             try
             {
                 byte[] fileBytes = File.ReadAllBytes(filePath);
@@ -74,7 +78,6 @@ namespace XorThreadPoolFile
                     {
                         if (cts.IsCancellationRequested)
                         {
-                            // İşlem iptal edildiğinde dosyayı önceki durumuna geri döndür
                             fileStream.Seek(0, SeekOrigin.Begin);
                             fileStream.Write(fileBytes, 0, fileBytes.Length);
                             fileStream.SetLength(fileBytes.Length);
@@ -86,21 +89,13 @@ namespace XorThreadPoolFile
                         fileStream.WriteByte((byte)(fileBytes[i] ^ encryptionKey[i % encryptionKey.Length]));
 
                         processedBytes++;
-                        await UpdateProgressBar(processedBytes, fileSize);
+                        UpdateProgressBar(processedBytes, fileSize);
+                        Thread.Sleep(50); 
                     }
                 }
 
-                if (!cts.IsCancellationRequested)
-                {
-                    MessageBox.Show("Şifreleme işlemi başarıyla tamamlandı.");
-                }
-                else
-                {
-                    MessageBox.Show("Şifreleme işlemi iptal edildi.");
-                }
-
                 // İlerleme çubuğunu sıfırla
-                await UpdateProgressBar(0, 1);
+                UpdateProgressBar(0, 1);
             }
             catch (Exception ex)
             {
@@ -108,8 +103,9 @@ namespace XorThreadPoolFile
             }
         }
 
-        private async Task DecryptFile(string filePath)
+        private void DecryptFile(object state)
         {
+            string filePath = (string)state;
             try
             {
                 byte[] fileBytes = File.ReadAllBytes(filePath);
@@ -134,7 +130,8 @@ namespace XorThreadPoolFile
                         fileStream.WriteByte((byte)(fileBytes[i] ^ encryptionKey[i % encryptionKey.Length]));
 
                         processedBytes++;
-                        await UpdateProgressBar(processedBytes, fileSize);
+                        UpdateProgressBar(processedBytes, fileSize);
+                        Thread.Sleep(50); // İşlemi yavaşlatmak için bir bekleme süresi ekleyin
                     }
                 }
 
@@ -148,7 +145,7 @@ namespace XorThreadPoolFile
                 }
 
                 // İlerleme çubuğunu sıfırla
-                await UpdateProgressBar(0, 1);
+                UpdateProgressBar(0, 1);
             }
             catch (Exception ex)
             {
@@ -156,12 +153,19 @@ namespace XorThreadPoolFile
             }
         }
 
-        private async Task UpdateProgressBar(long processedBytes, long fileSize)
+        private void UpdateProgressBar(long processedBytes, long fileSize)
         {
-            await Dispatcher.InvokeAsync(() =>
+            Dispatcher.Invoke(() =>
             {
                 double progress = (double)processedBytes / fileSize;
                 progressBar.Value = progress * 100;
+
+                // Geriye doğru ilerlemeyi göstermek için ProgressBar'ın değerini ayarlayın
+                if (cts != null && cts.IsCancellationRequested)
+                {
+                    double reverseProgress = (double)(fileSize - processedBytes) / fileSize;
+                    progressBar.Value = progressBar.Maximum - (reverseProgress * 100);
+                }
             });
         }
 
