@@ -93,13 +93,11 @@ namespace XorThreadPoolFile
                         Thread.Sleep(50); 
                     }
                 }
-
-                // İlerleme çubuğunu sıfırla
                 UpdateProgressBar(0, 1);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Bir hata oluştu: " + ex.Message);
+                MessageBox.Show("Bir xəta tapıldı-> " + ex.Message);
             }
         }
 
@@ -118,7 +116,6 @@ namespace XorThreadPoolFile
                     {
                         if (cts.IsCancellationRequested)
                         {
-                            // İşlem iptal edildiğinde dosyayı önceki durumuna geri döndür
                             fileStream.Seek(0, SeekOrigin.Begin);
                             fileStream.Write(fileBytes, 0, fileBytes.Length);
                             fileStream.SetLength(fileBytes.Length);
@@ -131,25 +128,15 @@ namespace XorThreadPoolFile
 
                         processedBytes++;
                         UpdateProgressBar(processedBytes, fileSize);
-                        Thread.Sleep(50); // İşlemi yavaşlatmak için bir bekleme süresi ekleyin
+                        Thread.Sleep(50);
                     }
                 }
 
-                if (!cts.IsCancellationRequested)
-                {
-                    MessageBox.Show("Şifre çözme işlemi başarıyla tamamlandı.");
-                }
-                else
-                {
-                    MessageBox.Show("Şifre çözme işlemi iptal edildi.");
-                }
-
-                // İlerleme çubuğunu sıfırla
                 UpdateProgressBar(0, 1);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Bir hata oluştu: " + ex.Message);
+                MessageBox.Show("Bir xəta tapıldı-> " + ex.Message);
             }
         }
 
@@ -159,8 +146,6 @@ namespace XorThreadPoolFile
             {
                 double progress = (double)processedBytes / fileSize;
                 progressBar.Value = progress * 100;
-
-                // Geriye doğru ilerlemeyi göstermek için ProgressBar'ın değerini ayarlayın
                 if (cts != null && cts.IsCancellationRequested)
                 {
                     double reverseProgress = (double)(fileSize - processedBytes) / fileSize;
@@ -171,7 +156,6 @@ namespace XorThreadPoolFile
 
         private byte[] GenerateEncryptionKey()
         {
-            // Rastgele bir şifreleme anahtarı oluştur
             byte[] key = new byte[16];
             new Random().NextBytes(key);
             return key;
